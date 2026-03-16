@@ -47,7 +47,8 @@ namespace lab2
                     break;
 
                 case "Масштабирование":
-                    if (!float.TryParse(sxBox.Text, out float sx) || !float.TryParse(syBox.Text, out float sy))
+                    if (!float.TryParse(sxBox.Text, out float sx) || !float.TryParse(syBox.Text, out float sy) || 
+                        sx <= 0 || sy <= 0)
                     {
                         MessageBox.Show("Введите число!", "Ошибка");
                         return;
