@@ -240,77 +240,114 @@ namespace lab2
             return new PointF(cx, cy);
         }
 
-        // Перемещение
-        public static List<PointF> Move(List<PointF> points, float dx, float dy)
+        // Умножение матриц
+        private static float[,] MultiplyMatrix(float[,] a, float[,] b)
         {
-            var result = new List<PointF>();
-            foreach (var p in points)
+            float[,] result = new float[3, 3];
+            for (int i = 0; i < 3; i++)
             {
-                result.Add(new PointF(p.X + dx, p.Y - dy));
+                for (int j = 0; j < 3; j++)
+                {
+                    result[i, j] = 0;
+                    for (int k = 0; k < 3; k++)
+                    {
+                        result[i, j] += a[i, k] * b[k, j];
+                    }
+                }
             }
             return result;
         }
 
-        // Масштабирование
-        public static List<PointF> Scale(List<PointF> points, float sx, float sy)
+        // Умножение точек фигуры на матрицу
+        private static List<PointF> ApplyMatrix(List<PointF> points, float[,] matrix)
         {
-            var center = GetCenter(points);
             var result = new List<PointF>();
             foreach (var p in points)
             {
-                float newX = center.X + (p.X - center.X) * sx;
-                float newY = center.Y + (p.Y - center.Y) * sy;
+                float newX = p.X * matrix[0, 0] + p.Y * matrix[1, 0] + 1 * matrix[2, 0];
+                float newY = p.X * matrix[0, 1] + p.Y * matrix[1, 1] + 1 * matrix[2, 1];
                 result.Add(new PointF(newX, newY));
             }
             return result;
         }
 
-        // Вращение
+        // Матрица перемещения
+        private static float[,] TranslationMatrix(float dx, float dy)
+        {
+            return new float[,]
+            {
+            { 1,  0,  0 },
+            { 0,  1,  0 },
+            { dx, dy, 1 }
+            };
+        }
+
+        public static List<PointF> Move(List<PointF> points, float dx, float dy)
+        {
+            float[,] m = TranslationMatrix(dx, -dy);
+            return ApplyMatrix(points, m);
+        }
+
+        public static List<PointF> Scale(List<PointF> points, float sx, float sy)
+        {
+            var center = GetCenter(points);
+
+            float[,] toOrigin = TranslationMatrix(-center.X, -center.Y);
+            float[,] scale = {
+                { sx, 0,  0 },
+                { 0,  sy, 0 },
+                { 0,  0,  1 }
+            };
+            float[,] toCenter = TranslationMatrix(center.X, center.Y);
+
+            float[,] finalMatrix = MultiplyMatrix(MultiplyMatrix(toOrigin, scale), toCenter);
+            return ApplyMatrix(points, finalMatrix);
+        }
+
         public static List<PointF> Rotate(List<PointF> points, float angleDegrees)
         {
             var center = GetCenter(points);
-            var result = new List<PointF>();
-
-            // Перевод градусов в радианы
             double angleRadians = angleDegrees * Math.PI / 180.0;
             float cosA = (float)Math.Cos(angleRadians);
             float sinA = (float)Math.Sin(angleRadians);
 
-            foreach (var p in points)
-            {
-                float newX = center.X + (p.X - center.X) * cosA - (p.Y - center.Y) * sinA;
-                float newY = center.Y + (p.X - center.X) * sinA + (p.Y - center.Y) * cosA;
-                result.Add(new PointF(newX, newY));
-            }
-            return result;
+            float[,] toOrigin = TranslationMatrix(-center.X, -center.Y);
+
+            float[,] rotate = {
+                {  cosA, -sinA, 0 },
+                {  sinA,  cosA, 0 },
+                {  0,     0,    1 }
+            };
+            float[,] toCenter = TranslationMatrix(center.X, center.Y);
+
+            float[,] finalMatrix = MultiplyMatrix(MultiplyMatrix(toOrigin, rotate), toCenter);
+            return ApplyMatrix(points, finalMatrix);
         }
 
-        // Сдвиг по X
         public static List<PointF> ShearX(List<PointF> points, float shx)
         {
             var center = GetCenter(points);
-            var result = new List<PointF>();
-            foreach (var p in points)
-            {
-                float newX = center.X + (p.X - center.X) + (p.Y - center.Y) * shx;
-                float newY = p.Y;
-                result.Add(new PointF(newX, newY));
-            }
-            return result;
+            float[,] toOrigin = TranslationMatrix(-center.X, -center.Y);
+            float[,] shear = {
+                { 1,   0, 0 },
+                { shx, 1, 0 },
+                { 0,   0, 1 }
+            };
+            float[,] toCenter = TranslationMatrix(center.X, center.Y);
+            return ApplyMatrix(points, MultiplyMatrix(MultiplyMatrix(toOrigin, shear), toCenter));
         }
 
-        // Сдвиг по Y
         public static List<PointF> ShearY(List<PointF> points, float shy)
         {
             var center = GetCenter(points);
-            var result = new List<PointF>();
-            foreach (var p in points)
-            {
-                float newX = p.X;
-                float newY = center.Y + (p.Y - center.Y) + (p.X - center.X) * shy;
-                result.Add(new PointF(newX, newY));
-            }
-            return result;
+            float[,] toOrigin = TranslationMatrix(-center.X, -center.Y);
+            float[,] shear = {
+            { 1, -shy, 0 },
+            { 0, 1,    0 },
+            { 0, 0,    1 }
+        };
+            float[,] toCenter = TranslationMatrix(center.X, center.Y);
+            return ApplyMatrix(points, MultiplyMatrix(MultiplyMatrix(toOrigin, shear), toCenter));
         }
     }
 }
